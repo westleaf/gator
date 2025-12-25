@@ -51,7 +51,7 @@ func (c *Config) SetUser(user string) error {
 	}
 
 	conf.CurrentUserName = user
-	conf.DbURL = "postgres://example"
+	conf.DbURL = c.DbURL
 
 	err = c.write(conf)
 	if err != nil {
