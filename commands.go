@@ -85,6 +85,52 @@ func handlerGetUsers(s *state, cmd command) error {
 	return nil
 }
 
+func handlerGetFeed(s *state, cmd command) error {
+	feed, err := fetchFeed(context.Background(), "https://www.wagslane.dev/index.xml")
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("%+v", feed)
+
+	return nil
+}
+
+func handlerAddFeed(s *state, cmd command) error {
+	user, err := s.db.GetUser(context.Background(), s.config.CurrentUserName)
+	if err != nil {
+		return err
+	}
+
+	feed, err := s.db.CreateFeed(context.Background(), database.CreateFeedParams{
+		Name:   cmd.args[0],
+		Url:    cmd.args[1],
+		UserID: user.ID,
+	})
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("Feed: %+v", feed)
+	return nil
+}
+
+func handlerListFeeds(s *state, cmd command) error {
+	feeds, err := s.db.GetFeeds(context.Background())
+	if err != nil {
+		return nil
+	}
+
+	for _, feed := range feeds {
+		user, err := s.db.GetUserById(context.Background(), feed.UserID)
+		if err != nil {
+			return err
+		}
+		fmt.Printf("Name: %s, Url: %s, Added by: %s\n", feed.Name, feed.Url, user.Name)
+	}
+	return nil
+}
+
 type commands struct {
 	commandNames map[string]func(*state, command) error
 }
