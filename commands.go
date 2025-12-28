@@ -96,22 +96,32 @@ func handlerGetFeed(s *state, cmd command) error {
 	return nil
 }
 
-func handlerAddFeed(s *state, cmd command) error {
-	user, err := s.db.GetUser(context.Background(), s.config.CurrentUserName)
-	if err != nil {
-		return err
-	}
-
+func handlerAddFeed(s *state, cmd command, user database.User) error {
 	feed, err := s.db.CreateFeed(context.Background(), database.CreateFeedParams{
-		Name:   cmd.args[0],
-		Url:    cmd.args[1],
-		UserID: user.ID,
+		ID:        uuid.New(),
+		Name:      cmd.args[0],
+		Url:       cmd.args[1],
+		UserID:    user.ID,
+		CreatedAt: time.Now(),
+		UpdatedAt: time.Now(),
 	})
 	if err != nil {
 		return err
 	}
 
 	fmt.Printf("Feed: %+v", feed)
+
+	_, err = s.db.CreateFeedFollow(context.Background(), database.CreateFeedFollowParams{
+		ID:        uuid.New(),
+		CreatedAt: time.Now(),
+		UpdatedAt: time.Now(),
+		UserID:    user.ID,
+		FeedID:    feed.ID,
+	})
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -128,6 +138,73 @@ func handlerListFeeds(s *state, cmd command) error {
 		}
 		fmt.Printf("Name: %s, Url: %s, Added by: %s\n", feed.Name, feed.Url, user.Name)
 	}
+	return nil
+}
+
+func handlerFollowFeed(s *state, cmd command, user database.User) error {
+	if len(cmd.args) < 1 || len(cmd.args) > 1 {
+		return fmt.Errorf("unacceptable number of arguments")
+	}
+
+	feed, err := s.db.GetFeedByUrl(context.Background(), cmd.args[0])
+	if err != nil {
+		return err
+	}
+
+	_, err = s.db.CreateFeedFollow(context.Background(), database.CreateFeedFollowParams{
+		ID:        uuid.New(),
+		CreatedAt: time.Now(),
+		UpdatedAt: time.Now(),
+		UserID:    user.ID,
+		FeedID:    feed.ID,
+	})
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("User: %s, Feed: %s", user.Name, feed.Name)
+
+	return nil
+}
+
+func handlerListFollowFeedForUser(s *state, cmd command, user database.User) error {
+	if len(cmd.args) > 0 {
+		return fmt.Errorf("command takes no arguments")
+	}
+
+	feeds, err := s.db.GetFeedFollowsForUser(context.Background(), user.ID)
+	if err != nil {
+		return err
+	}
+
+	if len(feeds) == 0 {
+		return nil //fmt.Errorf("no feeds followed for user: %s", user.Name)
+	}
+
+	fmt.Printf("List of user %s followed feeds:\n", user.Name)
+	for _, feed := range feeds {
+		fmt.Println(feed.FeedName)
+	}
+	return nil
+}
+
+func handlerDeleteFeedFollowForUser(s *state, cmd command, user database.User) error {
+	if len(cmd.args) < 1 {
+		return fmt.Errorf("not enough arguments in command")
+	}
+
+	feed, err := s.db.GetFeedByUrl(context.Background(), cmd.args[0])
+	if err != nil {
+		return err
+	}
+
+	s.db.DeleteFeedFollow(context.Background(), database.DeleteFeedFollowParams{
+		UserID: user.ID,
+		FeedID: feed.ID,
+	})
+
+	fmt.Printf("user: %s unlfollowed feed: %s\n", user.Name, feed.Name)
+
 	return nil
 }
 
