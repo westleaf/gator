@@ -7,23 +7,17 @@ package database
 
 import (
 	"context"
-	"database/sql"
 
 	"github.com/google/uuid"
 )
 
 const markFeedFetched = `-- name: MarkFeedFetched :exec
 UPDATE feeds
-SET last_fetched_at = $1, updated_at = $1
-WHERE id = $2
+SET last_fetched_at = NOW(), updated_at = NOW()
+WHERE id = $1
 `
 
-type MarkFeedFetchedParams struct {
-	LastFetchedAt sql.NullTime
-	ID            uuid.UUID
-}
-
-func (q *Queries) MarkFeedFetched(ctx context.Context, arg MarkFeedFetchedParams) error {
-	_, err := q.db.ExecContext(ctx, markFeedFetched, arg.LastFetchedAt, arg.ID)
+func (q *Queries) MarkFeedFetched(ctx context.Context, id uuid.UUID) error {
+	_, err := q.db.ExecContext(ctx, markFeedFetched, id)
 	return err
 }

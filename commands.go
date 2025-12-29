@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"strconv"
 	"time"
 
 	"github.com/google/uuid"
@@ -29,7 +30,7 @@ func handlerLogin(s *state, cmd command) error {
 		return err
 	}
 
-	fmt.Printf("User has ben set to: %s\n", cmd.args[0])
+	fmt.Printf("User has been set to: %s\n", cmd.args[0])
 
 	return nil
 }
@@ -86,12 +87,55 @@ func handlerGetUsers(s *state, cmd command) error {
 }
 
 func handlerGetFeed(s *state, cmd command) error {
-	feed, err := fetchFeed(context.Background(), "https://www.wagslane.dev/index.xml")
+	if len(cmd.args) < 1 {
+		return fmt.Errorf("usage: agg <time_between_requests>")
+	}
+	if len(cmd.args) > 1 {
+		return fmt.Errorf("too many arguments")
+	}
+
+	timeBetweenReqsStr := cmd.args[0]
+	timeBetweenReqs, err := time.ParseDuration(timeBetweenReqsStr)
+	if err != nil {
+		return err
+	}
+	ticker := time.NewTicker(timeBetweenReqs)
+
+	scrapeFeeds(s)
+
+	for ; ; <-ticker.C {
+		scrapeFeeds(s)
+	}
+}
+
+func handlerBrowse(s *state, cmd command, user database.User) error {
+	limit := 2
+	var err error
+	if len(cmd.args) > 1 {
+		return fmt.Errorf("too many arguments")
+	}
+	if len(cmd.args) == 1 {
+		limit, err = strconv.Atoi(cmd.args[0])
+		if err != nil {
+			return err
+		}
+	}
+
+	posts, err := s.db.GetPostsForUser(context.Background(), database.GetPostsForUserParams{
+		UserID: user.ID,
+		Limit:  int32(limit),
+	})
 	if err != nil {
 		return err
 	}
 
-	fmt.Printf("%+v", feed)
+	for _, post := range posts {
+		pub := "unknown"
+		if post.PublishedAt.Valid {
+			pub = post.PublishedAt.Time.UTC().String()
+		}
+		fmt.Printf("Title: %s\nDescription: %s\nPublished at:%s\n", post.Title, post.Description.String, pub)
+	}
 
 	return nil
 }

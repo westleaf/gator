@@ -53,6 +53,7 @@ func main() {
 	cmd.register("follow", middlewareLoggedIn(handlerFollowFeed))
 	cmd.register("following", middlewareLoggedIn(handlerListFollowFeedForUser))
 	cmd.register("unfollow", middlewareLoggedIn(handlerDeleteFeedFollowForUser))
+	cmd.register("browse", middlewareLoggedIn(handlerBrowse))
 
 	err = cmd.run(&st, command{
 		name: os.Args[1],

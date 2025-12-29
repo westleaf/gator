@@ -7,6 +7,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"time"
 )
 
 type RSSFeed struct {
@@ -26,6 +27,9 @@ type RSSItem struct {
 }
 
 func fetchFeed(ctx context.Context, feedUrl string) (*RSSFeed, error) {
+	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+
 	client := &http.Client{}
 
 	req, err := http.NewRequestWithContext(ctx, "GET", feedUrl, nil)
